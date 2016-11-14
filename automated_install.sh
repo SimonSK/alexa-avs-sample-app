@@ -385,8 +385,15 @@ echo ""
 echo ""
 echo "=========== Installing Oracle Java8 ==========="
 echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | sudo /usr/bin/debconf-set-selections
-chmod +x $Java_Client_Loc/install-java8.sh
-cd $Java_Client_Loc && bash ./install-java8.sh
+#chmod +x $Java_Client_Loc/install-java8.sh
+#cd $Java_Client_Loc && bash ./install-java8.sh
+sudo add-apt-repository -y ppa:webupd8team/java
+sudo apt update && sudo apt install -y oracle-java8-installer oracle-java8-set-default
+java -version
+
+read -n1 -r -p "Press space to continue..." key
+echo ""
+
 cd $Origin
 
 echo ""
@@ -408,52 +415,38 @@ sudo apt-get upgrade -y
 echo "========== Installing Git ============"
 sudo apt-get install -y git
 
-
-echo "========== Getting the code for Kitt-Ai ==========="
-cd $Kitt_Ai_Loc
-git clone https://github.com/Kitt-AI/snowboy.git
-
-echo "========== Getting the code for Sensory ==========="
-cd $Sensory_Loc
-git clone https://github.com/Sensory/alexa-rpi.git
-
-cd $Origin
-
-echo "========== Installing Libraries for Kitt-Ai and Sensory: ALSA, Atlas ==========="
-sudo apt-get -y install libasound2-dev
-sudo apt-get -y install libatlas-base-dev
-sudo ldconfig
-
-echo "========== Installing VLC and associated Environmental Variables =========="
-sudo apt-get install -y vlc vlc-nox vlc-data
+echo "========== Installing VLC, associated Environmental Variables, and recording related =========="
+sudo apt-get install -y vlc vlc-nox vlc-data sox python-pyaudio python3-pyaudio
 #Make sure that the libraries can be found
 sudo sh -c "echo \"/usr/lib/vlc\" >> /etc/ld.so.conf.d/vlc_lib.conf"
 sudo sh -c "echo \"VLC_PLUGIN_PATH=\"/usr/lib/vlc/plugin\"\" >> /etc/environment"
 sudo ldconfig
+
+read -n1 -r -p "Press space to continue..." key
+echo ""
 
 echo "========== Installing NodeJS =========="
 sudo apt-get install -y nodejs npm build-essential
 sudo ln -s /usr/bin/nodejs /usr/bin/node
 node -v
 sudo ldconfig
+sudo npm install npm -g
+npm config set registry "http://registry.npmjs.org/"
+
+read -n1 -r -p "Press space to continue..." key
+echo ""
 
 echo "========== Installing Maven =========="
 sudo apt-get install -y maven
 mvn -version
 sudo ldconfig
 
+read -n1 -r -p "Press space to continue..." key
+echo ""
+
 echo "========== Installing OpenSSL and Generating Self-Signed Certificates =========="
 sudo apt-get install -y openssl
 sudo ldconfig
-
-echo "========== Downloading and Building Port Audio Library needed for Kitt-Ai Snowboy =========="
-cd $Kitt_Ai_Loc/snowboy/examples/C++
-bash ./install_portaudio.sh
-sudo ldconfig
-cd $Kitt_Ai_Loc/snowboy/examples/C++
-make -j4
-sudo ldconfig
-cd $Origin
 
 echo "========== Generating ssl.cnf =========="
 if [ -f $Java_Client_Loc/ssl.cnf ]; then
@@ -494,6 +487,9 @@ echo "========== Installing CMake =========="
 sudo apt-get install -y cmake
 sudo ldconfig
 
+read -n1 -r -p "Press space to continue..." key
+echo ""
+
 echo "========== Installing Java Client =========="
 if [ -f $Java_Client_Loc/pom.xml ]; then
   rm $Java_Client_Loc/pom.xml
@@ -501,38 +497,86 @@ fi
 cp $Java_Client_Loc/pom_pi.xml $Java_Client_Loc/pom.xml
 cd $Java_Client_Loc && mvn validate && mvn install && cd $Origin
 
+read -n1 -r -p "Press space to continue..." key
+echo ""
+
 echo "========== Installing Companion Service =========="
-cd $Companion_Service_Loc && npm install && cd $Origin
+cd $Companion_Service_Loc
+rm -rf node_modules
+npm cache clean
+npm install && cd $Origin
 
-echo "========== Preparing External dependencies for Wake Word Agent =========="
-mkdir $External_Loc/include
-mkdir $External_Loc/lib
-mkdir $External_Loc/resources
+read -n1 -r -p "Press space to continue..." key
+echo ""
 
-cp $Kitt_Ai_Loc/snowboy/include/snowboy-detect.h $External_Loc/include/snowboy-detect.h
-cp $Kitt_Ai_Loc/snowboy/examples/C++/portaudio/install/include/portaudio.h $External_Loc/include/portaudio.h
-cp $Kitt_Ai_Loc/snowboy/examples/C++/portaudio/install/include/pa_ringbuffer.h $External_Loc/include/pa_ringbuffer.h
-cp $Kitt_Ai_Loc/snowboy/examples/C++/portaudio/install/include/pa_util.h $External_Loc/include/pa_util.h
-cp $Kitt_Ai_Loc/snowboy/lib/$OS/libsnowboy-detect.a $External_Loc/lib/libsnowboy-detect.a
-cp $Kitt_Ai_Loc/snowboy/examples/C++/portaudio/install/lib/libportaudio.a $External_Loc/lib/libportaudio.a
-cp $Kitt_Ai_Loc/snowboy/resources/common.res $External_Loc/resources/common.res
-cp $Kitt_Ai_Loc/snowboy/resources/alexa.umdl $External_Loc/resources/alexa.umdl
+if [ "$Wake_Word_Detection_Enabled" = "true" ]; then
+  echo "========== Installing Libraries for Kitt-Ai and Sensory: ALSA, Atlas ==========="
+  sudo apt-get -y install swig3.0 libasound2-dev libatlas-base-dev libmagic-dev 
+  sudo ldconfig
 
-$Sensory_Loc/alexa-rpi/bin/sdk-license file $Sensory_Loc/alexa-rpi/config/license-key.txt $Sensory_Loc/alexa-rpi/lib/libsnsr.a $Sensory_Loc/alexa-rpi/models/spot-alexa-rpi-20500.snsr $Sensory_Loc/alexa-rpi/models/spot-alexa-rpi-21000.snsr $Sensory_Loc/alexa-rpi/models/spot-alexa-rpi-31000.snsr
-cp $Sensory_Loc/alexa-rpi/include/snsr.h $External_Loc/include/snsr.h
-cp $Sensory_Loc/alexa-rpi/lib/libsnsr.a $External_Loc/lib/libsnsr.a
-cp $Sensory_Loc/alexa-rpi/models/spot-alexa-rpi-31000.snsr $External_Loc/resources/spot-alexa-rpi.snsr
+  read -n1 -r -p "Press space to continue..." key
+  echo ""
 
-mkdir $Wake_Word_Agent_Loc/tst/ext
-cp -R $External_Loc/* $Wake_Word_Agent_Loc/tst/ext
+  echo "========== Getting the code for Kitt-Ai ==========="
+  cd $Kitt_Ai_Loc
+  git clone https://github.com/Kitt-AI/snowboy.git
+
+  echo "========== Downloading and Building Port Audio Library needed for Kitt-Ai Snowboy =========="
+  cd $Kitt_Ai_Loc/snowboy/examples/C++
+  bash ./install_portaudio.sh
+  sudo ldconfig
+
+  read -n1 -r -p "Press space to continue..." key
+  echo ""
+
+  cd $Kitt_Ai_Loc/snowboy/examples/C++
+  make -j4
+  sudo ldconfig
+
+  read -n1 -r -p "Press space to continue..." key
+  echo ""
+
+  echo "========== Getting the code for Sensory ==========="
+  cd $Sensory_Loc
+  git clone https://github.com/Sensory/alexa-rpi.git
+
+  echo "========== Preparing External dependencies for Wake Word Agent =========="
+  mkdir $External_Loc/include
+  mkdir $External_Loc/lib
+  mkdir $External_Loc/resources
+
+  cp $Kitt_Ai_Loc/snowboy/include/snowboy-detect.h $External_Loc/include/snowboy-detect.h
+  cp $Kitt_Ai_Loc/snowboy/examples/C++/portaudio/install/include/portaudio.h $External_Loc/include/portaudio.h
+  cp $Kitt_Ai_Loc/snowboy/examples/C++/portaudio/install/include/pa_ringbuffer.h $External_Loc/include/pa_ringbuffer.h
+  cp $Kitt_Ai_Loc/snowboy/examples/C++/portaudio/install/include/pa_util.h $External_Loc/include/pa_util.h
+  cp $Kitt_Ai_Loc/snowboy/lib/$OS/libsnowboy-detect.a $External_Loc/lib/libsnowboy-detect.a
+  cp $Kitt_Ai_Loc/snowboy/examples/C++/portaudio/install/lib/libportaudio.a $External_Loc/lib/libportaudio.a
+  cp $Kitt_Ai_Loc/snowboy/resources/common.res $External_Loc/resources/common.res
+  cp $Kitt_Ai_Loc/snowboy/resources/alexa.umdl $External_Loc/resources/alexa.umdl
+
+  $Sensory_Loc/alexa-rpi/bin/sdk-license file $Sensory_Loc/alexa-rpi/config/license-key.txt $Sensory_Loc/alexa-rpi/lib/libsnsr.a $Sensory_Loc/alexa-rpi/models/spot-alexa-rpi-20500.snsr $Sensory_Loc/alexa-rpi/models/spot-alexa-rpi-21000.snsr $Sensory_Loc/alexa-rpi/models/spot-alexa-rpi-31000.snsr
+  cp $Sensory_Loc/alexa-rpi/include/snsr.h $External_Loc/include/snsr.h
+  cp $Sensory_Loc/alexa-rpi/lib/libsnsr.a $External_Loc/lib/libsnsr.a
+  cp $Sensory_Loc/alexa-rpi/models/spot-alexa-rpi-31000.snsr $External_Loc/resources/spot-alexa-rpi.snsr
+
+  mkdir $Wake_Word_Agent_Loc/tst/ext
+  cp -R $External_Loc/* $Wake_Word_Agent_Loc/tst/ext
+
+  read -n1 -r -p "Press space to continue..." key
+  echo ""
+
+  echo "========== Compiling Wake Word Agent =========="
+  cd $Wake_Word_Agent_Loc/src && cmake . && make -j4
+  cd $Wake_Word_Agent_Loc/tst && cmake . && make -j4
+
+  chown -R $User:$Group $Origin
+  chown -R $User:$Group /home/$User/.asoundrc
+
+  read -n1 -r -p "Press space to continue..." key
+  echo ""
+fi
+
 cd $Origin
-
-echo "========== Compiling Wake Word Agent =========="
-cd $Wake_Word_Agent_Loc/src && cmake . && make -j4
-cd $Wake_Word_Agent_Loc/tst && cmake . && make -j4
-
-chown -R $User:$Group $Origin
-chown -R $User:$Group /home/$User/.asoundrc
 
 echo ""
 echo '============================='
