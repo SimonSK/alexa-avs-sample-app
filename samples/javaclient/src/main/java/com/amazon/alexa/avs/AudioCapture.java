@@ -15,8 +15,14 @@ package com.amazon.alexa.avs;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PipedInputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
 
 import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioFileFormat;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.TargetDataLine;
 
@@ -97,13 +103,32 @@ public class AudioCapture {
 
         @Override
         public void run() {
+            byte[] data;
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             while (microphoneLine.isOpen()) {
-                copyAudioBytesFromInputToOutput();
+                data = copyAudioBytesFromInputToOutput();
+                try{
+                    outputStream.write(data);
+                } catch (IOException e) {
+                    log.error("wtf unknown error", e);
+                }
+            }
+            data = outputStream.toByteArray();
+            InputStream b_in = new ByteArrayInputStream(data);
+            AudioFormat format = new AudioFormat(16000f, 16, 1, true, false);
+            AudioInputStream stream = new AudioInputStream(b_in, format, data.length);
+            // audio file path hardcoded FIX THIS
+            File file = new File("/home/pi/Desktop/input.wav");
+            try{
+                file.createNewFile();
+                AudioSystem.write(stream, AudioFileFormat.Type.WAVE, file);
+            } catch (IOException e) {
+                log.error("wtf unknown error", e);
             }
             closePipedOutputStream();
         }
 
-        private void copyAudioBytesFromInputToOutput() {
+        private byte[] copyAudioBytesFromInputToOutput() {
             byte[] data = new byte[microphoneLine.getBufferSize() / 5];
             int numBytesRead = microphoneLine.read(data, 0, data.length);
             try {
@@ -111,6 +136,7 @@ public class AudioCapture {
             } catch (IOException e) {
                 stopCapture();
             }
+            return data;
         }
 
         private void closePipedOutputStream() {

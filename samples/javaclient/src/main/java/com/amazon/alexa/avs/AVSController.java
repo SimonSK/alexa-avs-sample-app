@@ -270,6 +270,9 @@ public class AVSController implements RecordingStateListener, AlertHandler, Aler
 
             dependentQueue.clear();
 
+            // codes should go somewhere here
+            // modify sendEvent to prevent communication with AVS
+
             InputStream inputStream = getMicrophoneInputStream(this, rmsListener);
 
             avsClient.sendEvent(body, inputStream, requestListener, AUDIO_TYPE);

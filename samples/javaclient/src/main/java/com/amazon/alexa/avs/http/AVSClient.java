@@ -362,6 +362,8 @@ public class AVSClient implements ConnectionListener {
      * @param audiotype
      * @throws IOException
      */
+    // need to modify this to prevent communication with AVS
+    // enqueueRequest makes connection
     public void sendEvent(RequestBody body, InputStream inputStream, RequestListener listener,
             AudioInputFormat audiotype)
                     throws JsonGenerationException, JsonMappingException, IOException {
