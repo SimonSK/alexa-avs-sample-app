@@ -14,6 +14,7 @@ package com.amazon.alexa.avs;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 
 import java.time.ZonedDateTime;
@@ -30,6 +31,8 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioFileFormat;
 
 import org.apache.commons.fileupload.MultipartStream;
 import org.eclipse.jetty.client.api.Request;
@@ -279,22 +282,44 @@ public class AVSController implements RecordingStateListener, AlertHandler, Aler
             // modify sendEvent to prevent communication with AVS
 
             // 1. record voice input and save it to WAV
-            InputStream originalInputStream = getMicrophoneInputStream(this, rmsListener);
+            InputStream inputStream = getMicrophoneInputStream(this, rmsListener);
+            // wait for 5 sec
+            Thread.sleep(5000);
+            microphone.stopCapture();
+            int size = inputStream.available();
+            // store to bytearray
+            byte[] bArrayInputStream = new byte[size];
+            inputStream.read(bArrayInputStream, 0, size);
+            inputStream.close();
+            // restore inputStream
+            inputStream = new ByteArrayInputStream(bArrayInputStream);
+            // convert to ais to save as WAV
+            AudioInputStream ais = new AudioInputStream(inputStream, AudioInputFormat.LPCM.getAudioFormat(), size);
+            File wavFile = new File(wavFilePath);
+            wavFile.delete();
+            wavFile.createNewFile();
+            AudioSystem.write(ais, AudioFileFormat.Type.WAVE, wavFile);
+            inputStream.close();
+            ais.close();
+
             // 2. send wav to Speaker Recognition API
-            System.out.println(wavFilePath);
             // 3. verify speaker
             // 4. modify voice input
             // 5. sendEvent using modified wav
             // 6. verify permission
             // 7. sendEvent using original stream
-            avsClient.sendEvent(body, originalInputStream, requestListener, AUDIO_TYPE);
+            // restore inputStream
+            inputStream = new ByteArrayInputStream(bArrayInputStream);
+            avsClient.sendEvent(body, inputStream, requestListener, AUDIO_TYPE);
 
             speechRequestAudioPlayerPauseController.startSpeechRequest();
         } catch (IOException e) {
             log.error("Error occurred while writing to WAV file.");
-        } catch (Exception e) {
+        } catch (InterruptedException e1) {
+            log.error("exception:", e1);
+        } catch (Exception e2) {
             player.playMp3FromResource(ERROR_SOUND);
-            requestListener.onRequestError(e);
+            requestListener.onRequestError(e2);
         }
     }
 
@@ -309,7 +334,7 @@ public class AVSController implements RecordingStateListener, AlertHandler, Aler
 
         for(; numberRetries > 0; numberRetries--) {
             try {
-                return microphone.getAudioInputStream(controller, rmsListener, wavFilePath);
+                return microphone.getAudioInputStream(controller, rmsListener);
             } catch (LineUnavailableException | IOException e) {
                 if (numberRetries == 1) {
                     throw e;

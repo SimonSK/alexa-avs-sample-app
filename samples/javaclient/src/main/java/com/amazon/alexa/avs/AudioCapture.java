@@ -15,14 +15,8 @@ package com.amazon.alexa.avs;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PipedInputStream;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
 
 import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioFileFormat;
-import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.TargetDataLine;
 
@@ -62,11 +56,11 @@ public class AudioCapture {
     }
 
     public InputStream getAudioInputStream(final RecordingStateListener stateListener,
-            final RecordingRMSListener rmsListener, final String wavFilePath) throws LineUnavailableException, IOException {
+            final RecordingRMSListener rmsListener) throws LineUnavailableException, IOException {
         try {
             startCapture();
             PipedInputStream inputStream = new PipedInputStream(BUFFER_SIZE_IN_BYTES);
-            thread = new AudioBufferThread(inputStream, stateListener, rmsListener, wavFilePath);
+            thread = new AudioBufferThread(inputStream, stateListener, rmsListener);
             thread.start();
             return inputStream;
         } catch (LineUnavailableException | IOException e) {
@@ -93,55 +87,31 @@ public class AudioCapture {
     private class AudioBufferThread extends Thread {
 
         private final AudioStateOutputStream audioStateOutputStream;
-        private final String wavFilePath;
 
         public AudioBufferThread(PipedInputStream inputStream,
-                RecordingStateListener recordingStateListener, RecordingRMSListener rmsListener, String wavFilePath)
+                RecordingStateListener recordingStateListener, RecordingRMSListener rmsListener)
                         throws IOException {
             audioStateOutputStream =
                     new AudioStateOutputStream(inputStream, recordingStateListener, rmsListener);
-            this.wavFilePath = wavFilePath;
         }
 
         @Override
         public void run() {
-            byte[] data;
-            ByteArrayOutputStream bArrayOutputStream = new ByteArrayOutputStream();
             while (microphoneLine.isOpen()) {
-                data = copyAudioBytesFromInputToOutput();
-                try{
-                    bArrayOutputStream.write(data);
-                } catch (IOException e) {
-                    log.error("Error occured while writing to byte array", e);
-                }
+                copyAudioBytesFromInputToOutput();
             }
             closePipedOutputStream();
-
-            // write microphone input to WAV file
-            byte[] allData = bArrayOutputStream.toByteArray();
-            InputStream bArrayInputStream = new ByteArrayInputStream(allData);
-            AudioInputStream ais = new AudioInputStream(bArrayInputStream, AudioInputFormat.LPCM.getAudioFormat(), allData.length);
-            // audio file path hardcoded FIX THIS
-            // String wavFileName = "/home/pi/Desktop/input.wav");
-            File wavFile = new File(wavFilePath);
-            try{
-                wavFile.delete();
-                wavFile.createNewFile();
-                AudioSystem.write(ais, AudioFileFormat.Type.WAVE, wavFile);
-            } catch (IOException e) {
-                log.error("Error occurred while saving to WAV file", e);
-            }
         }
 
-        private byte[] copyAudioBytesFromInputToOutput() {
+        private void copyAudioBytesFromInputToOutput() {
             byte[] data = new byte[microphoneLine.getBufferSize() / 5];
             int numBytesRead = microphoneLine.read(data, 0, data.length);
             try {
                 audioStateOutputStream.write(data, 0, numBytesRead);
             } catch (IOException e) {
                 stopCapture();
+                System.out.println("stopcapturing.");
             }
-            return data;
         }
 
         private void closePipedOutputStream() {
