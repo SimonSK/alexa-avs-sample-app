@@ -3,6 +3,7 @@
     "dsn":"",
     "provisioningMethod":"",
     "wakeWordAgentEnabled":false,
+    "wavFilePath":"",
     "companionApp":{
         "localPort":8443,
         "sslKeyStore":"",
