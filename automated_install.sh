@@ -385,10 +385,10 @@ echo ""
 echo ""
 echo "=========== Installing Oracle Java8 ==========="
 echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | sudo /usr/bin/debconf-set-selections
-#chmod +x $Java_Client_Loc/install-java8.sh
-#cd $Java_Client_Loc && bash ./install-java8.sh
-sudo add-apt-repository -y ppa:webupd8team/java
-sudo apt update && sudo apt install -y oracle-java8-installer oracle-java8-set-default
+chmod +x $Java_Client_Loc/install-java8.sh
+cd $Java_Client_Loc && bash ./install-java8.sh
+#sudo add-apt-repository -y ppa:webupd8team/java
+#sudo apt update && sudo apt install -y oracle-java8-installer oracle-java8-set-default
 java -version
 
 read -n1 -r -p "Press space to continue..." key
