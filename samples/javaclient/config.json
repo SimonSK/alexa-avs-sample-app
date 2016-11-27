@@ -1,18 +1,21 @@
 {
-    "productId":"",
-    "dsn":"",
-    "provisioningMethod":"",
-    "wakeWordAgentEnabled":false,
+    "productId":"diyecho",
+    "dsn":"1xxxxxxxxxx",
+    "wavFilePath":"/home/pi/Desktop/alexa-avs-sample-app/samples/javaclient/target/voice-input.wav",
+    "provisioningMethod":"companionService",
+    "wakeWordAgentEnabled":true,
+    "avsHost":"https://avs-alexa-na.amazon.com",
     "companionApp":{
         "localPort":8443,
-        "sslKeyStore":"",
-        "sslKeyStorePassphrase":"",
-        "lwaUrl":"https://api.amazon.com"
+        "lwaUrl":"https://api.amazon.com",
+        "sslKeyStore":"/home/pi/Desktop/alexa-avs-sample-app/samples/javaclient/certs/server/jetty.pkcs12",
+        "sslKeyStorePassphrase":""
     },
     "companionService":{
         "serviceUrl":"https://localhost:3000",
-        "sslClientKeyStore":"",
+        "sslClientKeyStore":"/home/pi/Desktop/alexa-avs-sample-app/samples/javaclient/certs/client/client.pkcs12",
         "sslClientKeyStorePassphrase":"",
-        "sslCaCert":""
+        "sslCaCert":"/home/pi/Desktop/alexa-avs-sample-app/samples/javaclient/certs/ca/ca.crt",
+        "sessionId":"aea07ef8-0b49-4a07-8bfb-f64ea043cdb7"
     }
 }
