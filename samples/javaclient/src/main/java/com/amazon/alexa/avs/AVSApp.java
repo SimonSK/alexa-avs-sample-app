@@ -103,7 +103,7 @@ public class AVSApp extends JFrame implements ExpectSpeechListener, RecordingRMS
         controller =
                 new AVSController(this, new AVSAudioPlayerFactory(), new AlertManagerFactory(),
                         getAVSClientFactory(deviceConfig), DialogRequestIdAuthority.getInstance(),
-                        config.getWakeWordAgentEnabled(), new WakeWordIPCFactory(), this);
+                        config.getWakeWordAgentEnabled(), config.getWavFilePath(), new WakeWordIPCFactory(), this);
 
         authSetup = new AuthSetup(config, this);
         authSetup.addAccessTokenListener(this);

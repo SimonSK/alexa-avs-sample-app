@@ -62,11 +62,11 @@ public class AudioCapture {
     }
 
     public InputStream getAudioInputStream(final RecordingStateListener stateListener,
-            final RecordingRMSListener rmsListener) throws LineUnavailableException, IOException {
+            final RecordingRMSListener rmsListener, final String wavFilePath) throws LineUnavailableException, IOException {
         try {
             startCapture();
             PipedInputStream inputStream = new PipedInputStream(BUFFER_SIZE_IN_BYTES);
-            thread = new AudioBufferThread(inputStream, stateListener, rmsListener);
+            thread = new AudioBufferThread(inputStream, stateListener, rmsListener, wavFilePath);
             thread.start();
             return inputStream;
         } catch (LineUnavailableException | IOException e) {
@@ -93,39 +93,44 @@ public class AudioCapture {
     private class AudioBufferThread extends Thread {
 
         private final AudioStateOutputStream audioStateOutputStream;
+        private final String wavFilePath;
 
         public AudioBufferThread(PipedInputStream inputStream,
-                RecordingStateListener recordingStateListener, RecordingRMSListener rmsListener)
+                RecordingStateListener recordingStateListener, RecordingRMSListener rmsListener, String wavFilePath)
                         throws IOException {
             audioStateOutputStream =
                     new AudioStateOutputStream(inputStream, recordingStateListener, rmsListener);
+            this.wavFilePath = wavFilePath;
         }
 
         @Override
         public void run() {
             byte[] data;
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            ByteArrayOutputStream bArrayOutputStream = new ByteArrayOutputStream();
             while (microphoneLine.isOpen()) {
                 data = copyAudioBytesFromInputToOutput();
                 try{
-                    outputStream.write(data);
+                    bArrayOutputStream.write(data);
                 } catch (IOException e) {
-                    log.error("wtf unknown error", e);
+                    log.error("Error occured while writing to byte array", e);
                 }
             }
-            data = outputStream.toByteArray();
-            InputStream b_in = new ByteArrayInputStream(data);
-            AudioFormat format = new AudioFormat(16000f, 16, 1, true, false);
-            AudioInputStream stream = new AudioInputStream(b_in, format, data.length);
-            // audio file path hardcoded FIX THIS
-            File file = new File("/home/pi/Desktop/input.wav");
-            try{
-                file.createNewFile();
-                AudioSystem.write(stream, AudioFileFormat.Type.WAVE, file);
-            } catch (IOException e) {
-                log.error("wtf unknown error", e);
-            }
             closePipedOutputStream();
+
+            // write microphone input to WAV file
+            byte[] allData = bArrayOutputStream.toByteArray();
+            InputStream bArrayInputStream = new ByteArrayInputStream(allData);
+            AudioInputStream ais = new AudioInputStream(bArrayInputStream, AudioInputFormat.LPCM.getAudioFormat(), allData.length);
+            // audio file path hardcoded FIX THIS
+            // String wavFileName = "/home/pi/Desktop/input.wav");
+            File wavFile = new File(wavFilePath);
+            try{
+                wavFile.delete();
+                wavFile.createNewFile();
+                AudioSystem.write(ais, AudioFileFormat.Type.WAVE, wavFile);
+            } catch (IOException e) {
+                log.error("Error occurred while saving to WAV file", e);
+            }
         }
 
         private byte[] copyAudioBytesFromInputToOutput() {

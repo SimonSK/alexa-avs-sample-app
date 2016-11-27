@@ -346,11 +346,14 @@ public class AVSClient implements ConnectionListener {
      */
     public void sendEvent(RequestBody body, RequestListener listener)
             throws JsonGenerationException, JsonMappingException, IOException {
+
+	log.info("event type 1 start\n");
         MultipartContentProvider multipartContent = new MultipartContentProvider();
         multipartContent.addPart(METADATA_NAME, createMetadataContent(body));
 
         enqueueRequest(
                 new AVSRequest(Resource.EVENTS, multipartContent, new LinearRetryPolicy(REQUEST_RETRY_DELAY_MS, REQUEST_ATTEMPTS), requestResponseParser, listener));
+	log.info("event type 1 stop\n");
     }
 
     /**
@@ -367,6 +370,7 @@ public class AVSClient implements ConnectionListener {
     public void sendEvent(RequestBody body, InputStream inputStream, RequestListener listener,
             AudioInputFormat audiotype)
                     throws JsonGenerationException, JsonMappingException, IOException {
+	log.info("event type 2 start\n");
 
         AudioInputStreamContentProvider audioContent =
                 new AudioInputStreamContentProvider(audiotype, inputStream);
@@ -379,6 +383,7 @@ public class AVSClient implements ConnectionListener {
 
         enqueueRequest(
                 new AVSRequest(Resource.EVENTS, multipartContent, new LinearRetryPolicy(REQUEST_RETRY_DELAY_MS, REQUEST_ATTEMPTS), requestResponseParser, listener));
+	log.info("event type 2 stop\n");
     }
 
     private StringContentProvider createMetadataContent(RequestBody body)

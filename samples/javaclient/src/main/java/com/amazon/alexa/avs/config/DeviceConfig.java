@@ -31,6 +31,7 @@ public class DeviceConfig {
 
     public static final String PRODUCT_ID = "productId";
     public static final String DSN = "dsn";
+    public static final String WAV_FILE_PATH = "wavFilePath";
     public static final String COMPANION_APP = "companionApp";
     public static final String COMPANION_SERVICE = "companionService";
     public static final String PROVISIONING_METHOD = "provisioningMethod";
@@ -42,6 +43,7 @@ public class DeviceConfig {
      */
     private final String productId;
     private final String dsn;
+    private final String wavFilePath;
     private final ProvisioningMethod provisioningMethod;
     private final URL avsHost;
 
@@ -85,6 +87,8 @@ public class DeviceConfig {
      *            The productId of this device.
      * @param dsn
      *            The dsn of this device.
+     * @param wavFilePath
+     *            The file path of voice-input wav file.
      * @param provisioningMethod
      *            The provisioningMethod to use. One of: {@value #COMPANION_APP},
      *            {@value #COMPANION_SERVICE}
@@ -97,7 +101,7 @@ public class DeviceConfig {
      * @param avsHost
      *            (optional) AVS host override
      */
-    public DeviceConfig(String productId, String dsn, String provisioningMethod,
+    public DeviceConfig(String productId, String dsn, String wavFilePath, String provisioningMethod,
             boolean wakeWordAgentEnabled, CompanionAppInformation companionAppInfo,
             CompanionServiceInformation companionServiceInfo, String avsHost) {
 
@@ -107,6 +111,10 @@ public class DeviceConfig {
 
         if (StringUtils.isBlank(dsn)) {
             throw new MalformedConfigException(DSN + " is blank in your config file.");
+        }
+        
+        if (StringUtils.isBlank(wavFilePath)) {
+            throw new MalformedConfigException(WAV_FILE_PATH + " is blank in your config file.");
         }
 
         ProvisioningMethod method;
@@ -132,6 +140,7 @@ public class DeviceConfig {
         this.provisioningMethod = method;
         this.productId = productId;
         this.dsn = dsn;
+        this.wavFilePath = wavFilePath;
         this.companionServiceInfo = companionServiceInfo;
         this.companionAppInfo = companionAppInfo;
         avsHost = StringUtils.isBlank(avsHost) ? DEFAULT_HOST : avsHost;
@@ -144,10 +153,10 @@ public class DeviceConfig {
         this.wakeWordAgentEnabled = wakeWordAgentEnabled;
     }
 
-    public DeviceConfig(String productId, String dsn, String provisioningMethod,
+    public DeviceConfig(String productId, String dsn, String wavFilePath, String provisioningMethod,
             boolean wakeWordAgentEnabled, CompanionAppInformation companionAppInfo,
             CompanionServiceInformation companionServiceInfo) {
-        this(productId, dsn, provisioningMethod, wakeWordAgentEnabled, companionAppInfo,
+        this(productId, dsn, wavFilePath, provisioningMethod, wakeWordAgentEnabled, companionAppInfo,
                 companionServiceInfo, DEFAULT_HOST);
     }
 
@@ -170,6 +179,13 @@ public class DeviceConfig {
      */
     public String getDsn() {
         return dsn;
+    }
+
+    /**
+     * @return wavFilePath.
+     */
+    public String getWavFilePath() {
+        return wavFilePath;
     }
 
     /**
@@ -232,6 +248,7 @@ public class DeviceConfig {
                 Json.createObjectBuilder()
                         .add(PRODUCT_ID, productId)
                         .add(DSN, dsn)
+                        .add(WAV_FILE_PATH, wavFilePath)
                         .add(PROVISIONING_METHOD, provisioningMethod.toString())
                         .add(WAKE_WORD_AGENT_ENABLED, wakeWordAgentEnabled)
                         .add(AVS_HOST, avsHost.toString());
