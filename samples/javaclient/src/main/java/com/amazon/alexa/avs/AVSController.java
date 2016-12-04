@@ -307,28 +307,28 @@ public class AVSController implements RecordingStateListener, AlertHandler, Aler
             // 3. verify speaker
             // 4. modify voice input
             ByteArrayOutputStream bArrayOutputStream = new ByteArrayOutputStream();
-            File appendWavFile = new File(wavFilePath + "/append.wav");
-            AudioInputStream appendAis = AudioSystem.getAudioInputStream(appendWavFile);
-            int bytesPerFrame = appendAis.getFormat().getFrameSize();
+            File prependWavFile = new File(wavFilePath + "/prepend.wav");
+            AudioInputStream prependAis = AudioSystem.getAudioInputStream(prependWavFile);
+            int bytesPerFrame = prependAis.getFormat().getFrameSize();
             if (bytesPerFrame == AudioSystem.NOT_SPECIFIED) {
                 bytesPerFrame = 1;
             }
 
             int numBytes = 1024 * bytesPerFrame;
             byte[] buffer = new byte[numBytes];
-            int appendSize = 0;
+            int prependSize = 0;
             int numBytesRead = 0;
-            while ((numBytesRead = appendAis.read(buffer, 0, numBytes)) != -1) {
+            while ((numBytesRead = prependAis.read(buffer, 0, numBytes)) != -1) {
                 bArrayOutputStream.write(buffer, 0, numBytesRead);
-                appendSize += numBytesRead;
+                prependSize += numBytesRead;
             }
-            int mergedSize = size + appendSize;
-            appendAis.close();
-            byte[] appendData = bArrayOutputStream.toByteArray();
+            int mergedSize = size + prependSize;
+            prependAis.close();
+            byte[] prependData = bArrayOutputStream.toByteArray();
             bArrayOutputStream.close();
 
             ByteArrayOutputStream mergedOutputStream = new ByteArrayOutputStream();
-            mergedOutputStream.write(appendData);
+            mergedOutputStream.write(prependData);
             mergedOutputStream.write(data);
             byte[] mergedData = mergedOutputStream.toByteArray();
 
