@@ -21,7 +21,6 @@ else
 fi
 
 # Remove any existing Java
-sudo apt-get -y autoremove
 sudo apt-get -y remove --purge oracle-java8-jdk oracle-java7-jdk openjdk-7-jre openjdk-8-jre
 
 # Install Java from Ubuntu's PPA
@@ -32,3 +31,4 @@ sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys EEA14886
 sudo apt-get update
 sudo apt-get -y install oracle-java8-installer
 sudo apt-get -y install oracle-java8-set-default
+sudo apt-get -y autoremove
