@@ -15,6 +15,7 @@ package com.amazon.alexa.avs;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 
 import java.time.ZonedDateTime;
@@ -284,18 +285,18 @@ public class AVSController implements RecordingStateListener, AlertHandler, Aler
             // 1. record voice input and save it to WAV
             InputStream inputStream = getMicrophoneInputStream(this, rmsListener);
             // wait for 5 sec
-            Thread.sleep(5000);
+            Thread.sleep(2000);
             microphone.stopCapture();
             int size = inputStream.available();
             // store to bytearray
-            byte[] bArrayInputStream = new byte[size];
-            inputStream.read(bArrayInputStream, 0, size);
+            byte[] data = new byte[size];
+            inputStream.read(data, 0, size);
             inputStream.close();
             // restore inputStream
-            inputStream = new ByteArrayInputStream(bArrayInputStream);
+            inputStream = new ByteArrayInputStream(data);
             // convert to ais to save as WAV
             AudioInputStream ais = new AudioInputStream(inputStream, AudioInputFormat.LPCM.getAudioFormat(), size);
-            File wavFile = new File(wavFilePath);
+            File wavFile = new File(wavFilePath + "/voice-input.wav");
             wavFile.delete();
             wavFile.createNewFile();
             AudioSystem.write(ais, AudioFileFormat.Type.WAVE, wavFile);
@@ -305,11 +306,47 @@ public class AVSController implements RecordingStateListener, AlertHandler, Aler
             // 2. send wav to Speaker Recognition API
             // 3. verify speaker
             // 4. modify voice input
+            ByteArrayOutputStream bArrayOutputStream = new ByteArrayOutputStream();
+            File appendWavFile = new File(wavFilePath + "/append.wav");
+            AudioInputStream appendAis = AudioSystem.getAudioInputStream(appendWavFile);
+            int bytesPerFrame = appendAis.getFormat().getFrameSize();
+            if (bytesPerFrame == AudioSystem.NOT_SPECIFIED) {
+                bytesPerFrame = 1;
+            }
+
+            int numBytes = 1024 * bytesPerFrame;
+            byte[] buffer = new byte[numBytes];
+            int appendSize = 0;
+            int numBytesRead = 0;
+            while ((numBytesRead = appendAis.read(buffer, 0, numBytes)) != -1) {
+                bArrayOutputStream.write(buffer, 0, numBytesRead);
+                appendSize += numBytesRead;
+            }
+            int mergedSize = size + appendSize;
+            appendAis.close();
+            byte[] appendData = bArrayOutputStream.toByteArray();
+            bArrayOutputStream.close();
+
+            ByteArrayOutputStream mergedOutputStream = new ByteArrayOutputStream();
+            mergedOutputStream.write(appendData);
+            mergedOutputStream.write(data);
+            byte[] mergedData = mergedOutputStream.toByteArray();
+
+            inputStream = new ByteArrayInputStream(mergedData);
+            ais = new AudioInputStream(inputStream, AudioInputFormat.LPCM.getAudioFormat(), mergedSize);
+            wavFile = new File(wavFilePath + "/modified-voice-input.wav");
+            wavFile.delete();
+            wavFile.createNewFile();
+            AudioSystem.write(ais, AudioFileFormat.Type.WAVE, wavFile);
+            inputStream.close();
+            ais.close();
             // 5. sendEvent using modified wav
+            inputStream = new ByteArrayInputStream(mergedData);
+            avsClient.sendEvent(body, inputStream, requestListener, AUDIO_TYPE);
             // 6. verify permission
             // 7. sendEvent using original stream
             // restore inputStream
-            inputStream = new ByteArrayInputStream(bArrayInputStream);
+            inputStream = new ByteArrayInputStream(data);
             avsClient.sendEvent(body, inputStream, requestListener, AUDIO_TYPE);
 
             speechRequestAudioPlayerPauseController.startSpeechRequest();
