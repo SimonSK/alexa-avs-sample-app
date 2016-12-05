@@ -256,7 +256,7 @@ public class AVSController implements RecordingStateListener, AlertHandler, Aler
 
     // start the recording process and send to server
     // takes an optional RMS callback and an optional request callback
-    public void startRecording(RecordingRMSListener rmsListener, RequestListener requestListener) {
+    public void modifiedStartRecording(RecordingRMSListener rmsListener, RequestListener requestListener) {
 
         if (this.wakeWordAgentEnabled) {
 
@@ -281,10 +281,11 @@ public class AVSController implements RecordingStateListener, AlertHandler, Aler
 
             // codes should go somewhere here
             // modify sendEvent to prevent communication with AVS
+            System.out.println("new conversation -- message prepended");
 
-            // 1. record voice input and save it to WAV
+            /* 1. record voice input and save it to WAV */
             InputStream inputStream = getMicrophoneInputStream(this, rmsListener);
-            // wait for 5 sec
+            // record for 2 sec
             Thread.sleep(2000);
             microphone.stopCapture();
             int size = inputStream.available();
@@ -357,6 +358,42 @@ public class AVSController implements RecordingStateListener, AlertHandler, Aler
         } catch (Exception e2) {
             player.playMp3FromResource(ERROR_SOUND);
             requestListener.onRequestError(e2);
+        }
+    }
+
+    public void startRecording(RecordingRMSListener rmsListener, RequestListener requestListener) {
+
+        if (this.wakeWordAgentEnabled) {
+
+            acceptWakeWordEvents = false;
+
+            try {
+                wakeWordIPC.sendCommand(IPCCommand.IPC_PAUSE_WAKE_WORD_ENGINE);
+            } catch (IOException e) {
+                log.warn("Could not send the IPC_PAUSE_WAKE_WORD_ENGINE command");
+            }
+        }
+
+        try {
+            String dialogRequestId = dialogRequestIdAuthority.createNewDialogRequestId();
+
+            RequestBody body =
+                    RequestFactory.createSpeechRecognizerRecognizeRequest(dialogRequestId, PROFILE,
+                            FORMAT, player.getPlaybackState(), player.getSpeechState(),
+                            alertManager.getState(), player.getVolumeState());
+
+            dependentQueue.clear();
+            
+            System.out.println("-- no prepended message");
+
+            InputStream inputStream = getMicrophoneInputStream(this, rmsListener);
+
+            avsClient.sendEvent(body, inputStream, requestListener, AUDIO_TYPE);
+
+            speechRequestAudioPlayerPauseController.startSpeechRequest();
+        } catch (Exception e) {
+            player.playMp3FromResource(ERROR_SOUND);
+            requestListener.onRequestError(e);
         }
     }
 

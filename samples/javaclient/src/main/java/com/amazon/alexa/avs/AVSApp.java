@@ -66,6 +66,7 @@ public class AVSApp extends JFrame implements ExpectSpeechListener, RecordingRMS
     private static final String PLAY_LABEL = "\u25B6";
     private final AVSController controller;
     private JButton actionButton;
+    private JButton modifiedActionButton;
     private JButton playPauseButton;
     private Container playbackPanel;
     private JTextField tokenTextField;
@@ -194,8 +195,10 @@ public class AVSApp extends JFrame implements ExpectSpeechListener, RecordingRMS
     private void addActionField() {
         final RecordingRMSListener rmsListener = this;
         actionButton = new JButton(LISTEN_LABEL);
+        modifiedActionButton = new JButton(LISTEN_LABEL);
         buttonState = ButtonState.START;
         actionButton.setEnabled(true);
+        modifiedActionButton.setEnabled(true);
         actionButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -223,8 +226,45 @@ public class AVSApp extends JFrame implements ExpectSpeechListener, RecordingRMS
                     };
                     controller.startRecording(rmsListener, requestListener);
                 } else { // else we must already be in listening
-                    actionButton.setText(PROCESSING_LABEL); // go into processing mode
+                    modifiedActionButton.setText(PROCESSING_LABEL); // go into processing mode
                     actionButton.setEnabled(false);
+                    modifiedActionButton.setEnabled(false);
+                    visualizer.setIndeterminate(true);
+                    buttonState = ButtonState.PROCESSING;
+                    controller.stopRecording(); // stop the recording so the request can complete
+                }
+            }
+        });
+        modifiedActionButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                controller.onUserActivity();
+
+                if (buttonState == ButtonState.START) { // if in idle mode
+                    buttonState = ButtonState.STOP;
+                    setPlaybackControlEnabled(false);
+
+                    RequestListener requestListener = new RequestListener() {
+
+                        @Override
+                        public void onRequestSuccess() {
+                            finishProcessing();
+                        }
+
+                        @Override
+                        public void onRequestError(Throwable e) {
+                            log.error("An error occured creating speech request", e);
+                            JOptionPane.showMessageDialog(getContentPane(), e.getMessage(),
+                                    "Error", JOptionPane.ERROR_MESSAGE);
+                            modifiedActionButton.doClick();
+                            finishProcessing();
+                        }
+                    };
+                    controller.modifiedStartRecording(rmsListener, requestListener);
+                } else { // else we must already be in listening
+                    modifiedActionButton.setText(PROCESSING_LABEL); // go into processing mode
+                    actionButton.setEnabled(false);
+                    modifiedActionButton.setEnabled(false);
                     visualizer.setIndeterminate(true);
                     buttonState = ButtonState.PROCESSING;
                     controller.stopRecording(); // stop the recording so the request can complete
@@ -232,7 +272,7 @@ public class AVSApp extends JFrame implements ExpectSpeechListener, RecordingRMS
             }
         });
 
-        getContentPane().add(actionButton);
+        getContentPane().add(modifiedActionButton);
     }
 
     /**
@@ -322,10 +362,11 @@ public class AVSApp extends JFrame implements ExpectSpeechListener, RecordingRMS
     }
 
     public void finishProcessing() {
-        actionButton.setText(LISTEN_LABEL);
+        modifiedActionButton.setText(LISTEN_LABEL);
         setPlaybackControlEnabled(true);
         buttonState = ButtonState.START;
         actionButton.setEnabled(true);
+        modifiedActionButton.setEnabled(true);
         visualizer.setIndeterminate(false);
         controller.processingFinished();
 
@@ -341,13 +382,14 @@ public class AVSApp extends JFrame implements ExpectSpeechListener, RecordingRMS
         Thread thread = new Thread() {
             @Override
             public void run() {
-                while (!actionButton.isEnabled() || buttonState != ButtonState.START
+                while (!actionButton.isEnabled() || !modifiedActionButton.isEnabled() || buttonState != ButtonState.START
                         || controller.isSpeaking()) {
                     try {
                         Thread.sleep(500);
                     } catch (Exception e) {
                     }
                 }
+                System.out.println("in conversation");
                 actionButton.doClick();
             }
         };
@@ -357,7 +399,7 @@ public class AVSApp extends JFrame implements ExpectSpeechListener, RecordingRMS
     @Override
     public void onStopCaptureDirective() {
         if (buttonState == ButtonState.STOP) {
-            actionButton.doClick();
+            modifiedActionButton.doClick();
         }
     }
 
@@ -414,7 +456,7 @@ public class AVSApp extends JFrame implements ExpectSpeechListener, RecordingRMS
     public synchronized void onWakeWordDetected() {
         if (buttonState == ButtonState.START) { // if in idle mode
             log.info("Wake Word was detected");
-            actionButton.doClick();
+            modifiedActionButton.doClick();
         }
     }
 }
