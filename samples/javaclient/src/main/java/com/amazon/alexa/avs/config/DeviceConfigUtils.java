@@ -108,13 +108,15 @@ public final class DeviceConfigUtils {
 
             String productId = configObject.getString(DeviceConfig.PRODUCT_ID, null);
             String dsn = configObject.getString(DeviceConfig.DSN, null);
-            String wavFilePath = configObject.getString(DeviceConfig.WAV_FILE_PATH, null);
+            String tempFolderPath = configObject.getString(DeviceConfig.TEMP_FOLDER_PATH, null);
+            String speakerRecognitionAPIPath = configObject.getString(DeviceConfig.SPEAKER_RECOGNITION_API_PATH, null);
+            String subscriptionKey = configObject.getString(DeviceConfig.SUBSCRIPTION_KEY, null);
             String provisioningMethod =
                     configObject.getString(DeviceConfig.PROVISIONING_METHOD, null);
             String avsHost = configObject.getString(DeviceConfig.AVS_HOST, null);
             boolean wakeWordAgentEnabled = configObject.getBoolean(DeviceConfig.WAKE_WORD_AGENT_ENABLED, false);
             
-            DeviceConfig deviceConfig = new DeviceConfig(productId, dsn, wavFilePath, provisioningMethod,
+            DeviceConfig deviceConfig = new DeviceConfig(productId, dsn, tempFolderPath, speakerRecognitionAPIPath, subscriptionKey, provisioningMethod,
             		wakeWordAgentEnabled, companionAppInfo, companionServiceInfo, avsHost);
 
             return deviceConfig;

@@ -31,7 +31,9 @@ public class DeviceConfig {
 
     public static final String PRODUCT_ID = "productId";
     public static final String DSN = "dsn";
-    public static final String WAV_FILE_PATH = "wavFilePath";
+    public static final String TEMP_FOLDER_PATH = "tempFolderPath";
+    public static final String SPEAKER_RECOGNITION_API_PATH = "speakerRecognitionAPIPath";
+    public static final String SUBSCRIPTION_KEY = "subscriptionKey";
     public static final String COMPANION_APP = "companionApp";
     public static final String COMPANION_SERVICE = "companionService";
     public static final String PROVISIONING_METHOD = "provisioningMethod";
@@ -43,7 +45,9 @@ public class DeviceConfig {
      */
     private final String productId;
     private final String dsn;
-    private final String wavFilePath;
+    private final String tempFolderPath;
+    private final String speakerRecognitionAPIPath;
+    private final String subscriptionKey;
     private final ProvisioningMethod provisioningMethod;
     private final URL avsHost;
 
@@ -87,8 +91,12 @@ public class DeviceConfig {
      *            The productId of this device.
      * @param dsn
      *            The dsn of this device.
-     * @param wavFilePath
-     *            The file path of voice-input wav file.
+     * @param tempFolderPath
+     *            The path of temp folder.
+     * @param speakerRecognitionAPIPath
+     *            The file path of Microsoft Speaker Recognition API file.
+     * @param subscriptionKey
+     *            Speaker Recognition service subscription key.
      * @param provisioningMethod
      *            The provisioningMethod to use. One of: {@value #COMPANION_APP},
      *            {@value #COMPANION_SERVICE}
@@ -101,7 +109,8 @@ public class DeviceConfig {
      * @param avsHost
      *            (optional) AVS host override
      */
-    public DeviceConfig(String productId, String dsn, String wavFilePath, String provisioningMethod,
+    public DeviceConfig(String productId, String dsn, String tempFolderPath,
+            String speakerRecognitionAPIPath, String subscriptionKey, String provisioningMethod,
             boolean wakeWordAgentEnabled, CompanionAppInformation companionAppInfo,
             CompanionServiceInformation companionServiceInfo, String avsHost) {
 
@@ -113,8 +122,16 @@ public class DeviceConfig {
             throw new MalformedConfigException(DSN + " is blank in your config file.");
         }
         
-        if (StringUtils.isBlank(wavFilePath)) {
-            throw new MalformedConfigException(WAV_FILE_PATH + " is blank in your config file.");
+        if (StringUtils.isBlank(tempFolderPath)) {
+            throw new MalformedConfigException(TEMP_FOLDER_PATH + " is blank in your config file.");
+        }
+
+        if (StringUtils.isBlank(speakerRecognitionAPIPath)) {
+            throw new MalformedConfigException(SPEAKER_RECOGNITION_API_PATH + " is blank in your config file.");
+        }
+
+        if (StringUtils.isBlank(subscriptionKey)) {
+            throw new MalformedConfigException(SUBSCRIPTION_KEY + " is blank in your config file.");
         }
 
         ProvisioningMethod method;
@@ -140,7 +157,9 @@ public class DeviceConfig {
         this.provisioningMethod = method;
         this.productId = productId;
         this.dsn = dsn;
-        this.wavFilePath = wavFilePath;
+        this.tempFolderPath = tempFolderPath;
+        this.speakerRecognitionAPIPath = speakerRecognitionAPIPath;
+        this.subscriptionKey = subscriptionKey;
         this.companionServiceInfo = companionServiceInfo;
         this.companionAppInfo = companionAppInfo;
         avsHost = StringUtils.isBlank(avsHost) ? DEFAULT_HOST : avsHost;
@@ -153,11 +172,11 @@ public class DeviceConfig {
         this.wakeWordAgentEnabled = wakeWordAgentEnabled;
     }
 
-    public DeviceConfig(String productId, String dsn, String wavFilePath, String provisioningMethod,
-            boolean wakeWordAgentEnabled, CompanionAppInformation companionAppInfo,
-            CompanionServiceInformation companionServiceInfo) {
-        this(productId, dsn, wavFilePath, provisioningMethod, wakeWordAgentEnabled, companionAppInfo,
-                companionServiceInfo, DEFAULT_HOST);
+    public DeviceConfig(String productId, String dsn, String tempFolderPath, String speakerRecognitionAPIPath,
+            String subscriptionKey, String provisioningMethod, boolean wakeWordAgentEnabled,
+            CompanionAppInformation companionAppInfo, CompanionServiceInformation companionServiceInfo) {
+        this(productId, dsn, tempFolderPath, speakerRecognitionAPIPath, subscriptionKey, provisioningMethod,
+                wakeWordAgentEnabled, companionAppInfo, companionServiceInfo, DEFAULT_HOST);
     }
 
     /**
@@ -182,10 +201,24 @@ public class DeviceConfig {
     }
 
     /**
-     * @return wavFilePath.
+     * @return tempFolderPath.
      */
-    public String getWavFilePath() {
-        return wavFilePath;
+    public String getTempFolderPath() {
+        return tempFolderPath;
+    }
+
+    /**
+     * @return speakerRecognitionAPIPath.
+     */
+    public String getSpeakerRecognitionAPIPath() {
+        return speakerRecognitionAPIPath;
+    }
+
+    /**
+     * @return subscriptionKey.
+     */
+    public String getSubscriptionKey() {
+        return subscriptionKey;
     }
 
     /**
@@ -248,7 +281,9 @@ public class DeviceConfig {
                 Json.createObjectBuilder()
                         .add(PRODUCT_ID, productId)
                         .add(DSN, dsn)
-                        .add(WAV_FILE_PATH, wavFilePath)
+                        .add(TEMP_FOLDER_PATH, tempFolderPath)
+                        .add(SPEAKER_RECOGNITION_API_PATH, speakerRecognitionAPIPath)
+                        .add(SUBSCRIPTION_KEY, subscriptionKey)
                         .add(PROVISIONING_METHOD, provisioningMethod.toString())
                         .add(WAKE_WORD_AGENT_ENABLED, wakeWordAgentEnabled)
                         .add(AVS_HOST, avsHost.toString());

@@ -1,7 +1,9 @@
 {
     "productId":"${ProductID}",
     "dsn":"${DeviceSerialNumber}",
-    "wavFilePath":"${Java_Client_Loc}/target",
+    "tempFolderPath":"${Java_Client_Loc}/tmp",
+    "speakerRecognitionAPIPath":"${Java_Client_Loc}/src/main/python/IdentifyFile.py",
+    "subscriptionKey":"${SubscriptionKey}",
     "provisioningMethod":"companionService",
     "wakeWordAgentEnabled":${Wake_Word_Detection_Enabled},
     "companionApp":{

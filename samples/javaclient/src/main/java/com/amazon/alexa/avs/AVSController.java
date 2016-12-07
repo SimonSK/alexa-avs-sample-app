@@ -13,13 +13,16 @@
 package com.amazon.alexa.avs;
 
 import java.io.IOException;
+import java.io.BufferedReader;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 
 import java.time.ZonedDateTime;
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
@@ -33,6 +36,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioFileFormat;
 
 import org.apache.commons.fileupload.MultipartStream;
@@ -108,15 +112,45 @@ public class AVSController implements RecordingStateListener, AlertHandler, Aler
     private final int WAKE_WORD_AGENT_PORT_NUMBER = 5123;
     private final int WAKE_WORD_RELEASE_TRIES = 5;
     private final int WAKE_WORD_RELEASE_RETRY_DELAY_MS = 1000;
-    private final String wavFilePath;
+    private final String tempFolderPath;
+    private final String speakerRecognitionAPIPath;
+    private final String subscriptionKey;
+    private final AudioFormat format = AUDIO_TYPE.getAudioFormat();
+    private final AudioFileFormat.Type fileType = AudioFileFormat.Type.WAVE;
+    private final int secondsToCapture = 5;
+    private final int frameRate = (int) format.getFrameRate();
+    private final double secondsToSkip = 0.9;
+    private final int bytesToSkip;
+    private final int prependSize;
+    private final byte[] prependInput;
 
     public AVSController(ExpectSpeechListener listenHandler, AVSAudioPlayerFactory audioFactory,
             AlertManagerFactory alarmFactory, AVSClientFactory avsClientFactory,
-            DialogRequestIdAuthority dialogRequestIdAuthority, boolean wakeWordAgentEnabled, String wavFilePath,
+            DialogRequestIdAuthority dialogRequestIdAuthority, boolean wakeWordAgentEnabled,
+            String tempFolderPath, String speakerRecognitionAPIPath, String subscriptionKey,
             WakeWordIPCFactory wakewordIPCFactory, WakeWordDetectedHandler wakeWakeDetectedHandler)
             throws Exception {
 
-        this.wavFilePath = wavFilePath;
+        int frameSize = format.getFrameSize();
+        int bytesPerSecond = frameSize * this.frameRate;
+        bytesToSkip = (int) (bytesPerSecond * secondsToSkip);
+        this.subscriptionKey = subscriptionKey;
+        this.speakerRecognitionAPIPath = speakerRecognitionAPIPath;
+        this.tempFolderPath = tempFolderPath;
+        File directory = new File(tempFolderPath);
+        if (!directory.exists()) {
+            directory.mkdir();
+        }
+
+        // audio to be prepended to every input
+        File prependWavFile = new File(tempFolderPath + "/prepend.wav");
+        AudioInputStream prependAis = AudioSystem.getAudioInputStream(prependWavFile);
+        prependSize = prependAis.available();
+        byte[] prependInput = new byte[prependSize];
+        prependAis.read(prependInput, 0, prependSize); 
+        prependAis.close();
+        this.prependInput = prependInput;
+
         this.wakeWordAgentEnabled = wakeWordAgentEnabled;
         this.wakeWordDetectedHandler = wakeWakeDetectedHandler;
 
@@ -283,72 +317,112 @@ public class AVSController implements RecordingStateListener, AlertHandler, Aler
             // modify sendEvent to prevent communication with AVS
             System.out.println("new conversation -- message prepended");
 
-            /* 1. record voice input and save it to WAV */
+            /*
+            ** 1. record voice input and save it to WAV
+            */
             InputStream inputStream = getMicrophoneInputStream(this, rmsListener);
-            // record for 2 sec
-            Thread.sleep(2000);
+
+            // record for 5 sec
+            Thread.sleep(secondsToCapture * 1000);
             microphone.stopCapture();
-            int size = inputStream.available();
+
+            int size = inputStream.available() - bytesToSkip;
+
+            // skip to remove 'ding' sound
+            inputStream.skip(bytesToSkip);
+
             // store to bytearray
-            byte[] data = new byte[size];
-            inputStream.read(data, 0, size);
+            byte[] audioInput = new byte[size];
+            inputStream.read(audioInput);
             inputStream.close();
+
             // restore inputStream
-            inputStream = new ByteArrayInputStream(data);
-            // convert to ais to save as WAV
-            AudioInputStream ais = new AudioInputStream(inputStream, AudioInputFormat.LPCM.getAudioFormat(), size);
-            File wavFile = new File(wavFilePath + "/voice-input.wav");
+            inputStream = new ByteArrayInputStream(audioInput);
+
+            // convert to ais
+            long inputNumFrames = (long) ((secondsToCapture - secondsToSkip) * frameRate);
+            AudioInputStream ais = new AudioInputStream(inputStream, format, inputNumFrames);
+
+            // save as wav file
+            File wavFile = new File(tempFolderPath + "/voice-input.wav");
             wavFile.delete();
             wavFile.createNewFile();
-            AudioSystem.write(ais, AudioFileFormat.Type.WAVE, wavFile);
+            AudioSystem.write(ais, fileType, wavFile);
             inputStream.close();
             ais.close();
 
-            // 2. send wav to Speaker Recognition API
-            // 3. verify speaker
-            // 4. modify voice input
-            ByteArrayOutputStream bArrayOutputStream = new ByteArrayOutputStream();
-            File prependWavFile = new File(wavFilePath + "/prepend.wav");
-            AudioInputStream prependAis = AudioSystem.getAudioInputStream(prependWavFile);
-            int bytesPerFrame = prependAis.getFormat().getFrameSize();
-            if (bytesPerFrame == AudioSystem.NOT_SPECIFIED) {
-                bytesPerFrame = 1;
+            /*
+            ** 2. verify speaker through Speaker Recognition API
+            */
+//            List cmd1 = new ArrayList<>();
+            String cmd = "touch " + tempFolderPath + "/name.txt";
+            System.out.println(cmd);
+            executeCommand(cmd);
+
+            String speaker = "verified";
+            if (speaker == "verified") {
+                /*
+                ** 3. send verified speaker id to server
+                */
+                String speakerNameFileName = tempFolderPath + "/name.txt";
+                File speakerNameFile = new File(speakerNameFileName);
+                if (speakerNameFile.exists()) {
+                    cmd = "scp -i ~/.ssh/alexa-skill-server.pem " + speakerNameFileName + " ubuntu@52.15.157.172:~/flaskapp";
+                    System.out.println(cmd);
+                    executeCommand(cmd);
+                    cmd = "rm " + speakerNameFileName;
+                    System.out.println(cmd);
+                    executeCommand(cmd);
+                    System.out.println(subscriptionKey);
+                }
+
+                /*
+                ** 4. modify voice input
+                */
+
+                // prepend audio
+                ByteArrayOutputStream mergedOutputStream = new ByteArrayOutputStream();
+                mergedOutputStream.write(prependInput);
+                mergedOutputStream.write(audioInput);
+                byte[] mergedInput = mergedOutputStream.toByteArray();
+
+                // convert to ais
+                inputStream = new ByteArrayInputStream(mergedInput);
+                long mergedNumFrames = (long) ((secondsToCapture - secondsToSkip + 1.5) * frameRate);
+                ais = new AudioInputStream(inputStream, format, mergedNumFrames);
+
+                // save as wav file
+                wavFile = new File(tempFolderPath + "/modified-voice-input.wav");
+                wavFile.delete();
+                wavFile.createNewFile();
+                AudioSystem.write(ais, fileType, wavFile);
+                inputStream.close();
+                ais.close();
+
+                /*
+                ** 5. sendEvent using modified wav
+                */
+                inputStream = new ByteArrayInputStream(mergedInput);
+                avsClient.sendEvent(body, inputStream, requestListener, AUDIO_TYPE);
+
+                /*
+                ** 6. verify permission
+                */
+                String permission = "verified";
+                if (permission == "verified") {
+                    /*
+                    ** 7. sendEvent using original stream
+                    */
+                    inputStream = new ByteArrayInputStream(audioInput);
+                    avsClient.sendEvent(body, inputStream, requestListener, AUDIO_TYPE);
+                }
+                else {
+                    System.out.println("Not allowed!");
+                }
             }
-
-            int numBytes = 1024 * bytesPerFrame;
-            byte[] buffer = new byte[numBytes];
-            int prependSize = 0;
-            int numBytesRead = 0;
-            while ((numBytesRead = prependAis.read(buffer, 0, numBytes)) != -1) {
-                bArrayOutputStream.write(buffer, 0, numBytesRead);
-                prependSize += numBytesRead;
+            else {
+                System.out.println("Unrecognized speaker!");
             }
-            int mergedSize = size + prependSize;
-            prependAis.close();
-            byte[] prependData = bArrayOutputStream.toByteArray();
-            bArrayOutputStream.close();
-
-            ByteArrayOutputStream mergedOutputStream = new ByteArrayOutputStream();
-            mergedOutputStream.write(prependData);
-            mergedOutputStream.write(data);
-            byte[] mergedData = mergedOutputStream.toByteArray();
-
-            inputStream = new ByteArrayInputStream(mergedData);
-            ais = new AudioInputStream(inputStream, AudioInputFormat.LPCM.getAudioFormat(), mergedSize);
-            wavFile = new File(wavFilePath + "/modified-voice-input.wav");
-            wavFile.delete();
-            wavFile.createNewFile();
-            AudioSystem.write(ais, AudioFileFormat.Type.WAVE, wavFile);
-            inputStream.close();
-            ais.close();
-            // 5. sendEvent using modified wav
-            inputStream = new ByteArrayInputStream(mergedData);
-            avsClient.sendEvent(body, inputStream, requestListener, AUDIO_TYPE);
-            // 6. verify permission
-            // 7. sendEvent using original stream
-            // restore inputStream
-            inputStream = new ByteArrayInputStream(data);
-            avsClient.sendEvent(body, inputStream, requestListener, AUDIO_TYPE);
 
             speechRequestAudioPlayerPauseController.startSpeechRequest();
         } catch (IOException e) {
@@ -358,6 +432,24 @@ public class AVSController implements RecordingStateListener, AlertHandler, Aler
         } catch (Exception e2) {
             player.playMp3FromResource(ERROR_SOUND);
             requestListener.onRequestError(e2);
+        }
+    }
+
+    /* https://www.mkyong.com/java/how-to-execute-shell-command-from-java/ */
+    private void executeCommand(String command) {
+//        StringBuffer output = new StringBuffer();
+        try {
+            Runtime rt = Runtime.getRuntime();
+            Process pr = rt.exec(command);
+            BufferedReader input = new BufferedReader(new InputStreamReader(pr.getInputStream()));
+            String line = null;
+            while ((line = input.readLine())!= null) {
+                System.out.println(line);
+            }
+            int exitVal = pr.waitFor();
+            System.out.println("Something went wrong." + exitVal);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
