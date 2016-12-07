@@ -29,7 +29,7 @@ def identify_file(client, file_path, profile_ids, force_short_audio):
     identified_profile_id = identification_response.get_identified_profile_id()
     confidence = identification_response.get_confidence()
 
-    if confidence != "High":
+    if (confidence != "High" and confidence != "Normal") or identified_profile_id == "00000000-0000-0000-0000-000000000000":
         identified_profile_id = ""
 
     return identified_profile_id

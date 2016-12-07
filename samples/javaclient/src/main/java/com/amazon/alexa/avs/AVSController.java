@@ -358,11 +358,12 @@ public class AVSController implements RecordingStateListener, AlertHandler, Aler
             // get speaker profile id
             String[] cmd = new String[] {"python3", speakerRecognitionAPIPath, subscriptionKey, wavFilePath, "true"};
             String speakerProfileId = executeCommand(cmd);
+            speakerProfileId = "placeholder";
 
-            if (speakerProfileId != "") {
+            if (!speakerProfileId.equals("")) {
                 // generate name.txt
                 String speakerProfileIdFileName = tempFolderPath + "/name.txt";
-                String[] cmd = new String[] {"echo", speakerProfileId};
+                cmd = new String[] {"echo", speakerProfileId};
                 ProcessBuilder builder = new ProcessBuilder(cmd);
                 builder.redirectOutput(new File(speakerProfileIdFileName));
                 Process p = builder.start();
@@ -377,7 +378,6 @@ public class AVSController implements RecordingStateListener, AlertHandler, Aler
 
                     cmd = new String[] {"rm", speakerProfileIdFileName};
                     executeCommand(cmd);
-                    System.out.println(subscriptionKey);
                 }
 
                 /*
@@ -408,6 +408,7 @@ public class AVSController implements RecordingStateListener, AlertHandler, Aler
                 */
                 inputStream = new ByteArrayInputStream(mergedInput);
                 avsClient.sendEvent(body, inputStream, requestListener, AUDIO_TYPE);
+                speechRequestAudioPlayerPauseController.startSpeechRequest();
 
                 /*
                 ** 6. verify permission
@@ -419,6 +420,7 @@ public class AVSController implements RecordingStateListener, AlertHandler, Aler
                     */
                     inputStream = new ByteArrayInputStream(audioInput);
                     avsClient.sendEvent(body, inputStream, requestListener, AUDIO_TYPE);
+                    speechRequestAudioPlayerPauseController.startSpeechRequest();
                 }
                 else {
                     System.out.println("Not allowed!");
@@ -428,7 +430,6 @@ public class AVSController implements RecordingStateListener, AlertHandler, Aler
                 System.out.println("Unrecognized speaker!");
             }
 
-            speechRequestAudioPlayerPauseController.startSpeechRequest();
         } catch (IOException e) {
             log.error("Error occurred while writing to WAV file.");
         } catch (InterruptedException e1) {
@@ -448,7 +449,7 @@ public class AVSController implements RecordingStateListener, AlertHandler, Aler
             BufferedReader input = new BufferedReader(new InputStreamReader(pr.getInputStream()));
             String line = null;
             while ((line = input.readLine())!= null) {
-                System.out.println(line);
+                output.append(line);
             }
             int exitVal = pr.waitFor();
             if (exitVal != 0) {
