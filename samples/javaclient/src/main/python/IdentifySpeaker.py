@@ -1,5 +1,5 @@
-from CognitiveSpeakerRecognition.Identification import IdentificationServiceHttpClientHelper
 import sys
+from CognitiveSpeakerRecognition.Identification import IdentificationServiceHttpClientHelper
 
 
 def print_all_profiles(client):
