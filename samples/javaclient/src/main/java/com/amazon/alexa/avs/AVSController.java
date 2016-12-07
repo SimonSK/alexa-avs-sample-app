@@ -344,7 +344,8 @@ public class AVSController implements RecordingStateListener, AlertHandler, Aler
             AudioInputStream ais = new AudioInputStream(inputStream, format, inputNumFrames);
 
             // save as wav file
-            File wavFile = new File(tempFolderPath + "/voice-input.wav");
+            String wavFilePath = tempFolderPath + "/voice-input.wav";
+            File wavFile = new File(wavFilePath);
             wavFile.delete();
             wavFile.createNewFile();
             AudioSystem.write(ais, fileType, wavFile);
@@ -354,24 +355,27 @@ public class AVSController implements RecordingStateListener, AlertHandler, Aler
             /*
             ** 2. verify speaker through Speaker Recognition API
             */
-//            List cmd1 = new ArrayList<>();
-            String cmd = "touch " + tempFolderPath + "/name.txt";
-            System.out.println(cmd);
-            executeCommand(cmd);
+            // get speaker profile id
+            String[] cmd = new String[] {"python3", speakerRecognitionAPIPath, subscriptionKey, wavFilePath, "true"};
+            String speakerProfileId = executeCommand(cmd);
 
-            String speaker = "verified";
-            if (speaker == "verified") {
+            if (speakerProfileId != "") {
+                // generate name.txt
+                String speakerProfileIdFileName = tempFolderPath + "/name.txt";
+                String[] cmd = new String[] {"echo", speakerProfileId};
+                ProcessBuilder builder = new ProcessBuilder(cmd);
+                builder.redirectOutput(new File(speakerProfileIdFileName));
+                Process p = builder.start();
+
                 /*
                 ** 3. send verified speaker id to server
                 */
-                String speakerNameFileName = tempFolderPath + "/name.txt";
-                File speakerNameFile = new File(speakerNameFileName);
-                if (speakerNameFile.exists()) {
-                    cmd = "scp -i ~/.ssh/alexa-skill-server.pem " + speakerNameFileName + " ubuntu@52.15.157.172:~/flaskapp";
-                    System.out.println(cmd);
+                File speakerProfileIdFile = new File(speakerProfileIdFileName);
+                if (speakerProfileIdFile.exists()) {
+                    cmd = new String[] {"scp", "-i", "/home/pi/.ssh/alexa-skill-server.pem", speakerProfileIdFileName, "ubuntu@52.15.157.172:~/flaskapp"};
                     executeCommand(cmd);
-                    cmd = "rm " + speakerNameFileName;
-                    System.out.println(cmd);
+
+                    cmd = new String[] {"rm", speakerProfileIdFileName};
                     executeCommand(cmd);
                     System.out.println(subscriptionKey);
                 }
@@ -436,8 +440,8 @@ public class AVSController implements RecordingStateListener, AlertHandler, Aler
     }
 
     /* https://www.mkyong.com/java/how-to-execute-shell-command-from-java/ */
-    private void executeCommand(String command) {
-//        StringBuffer output = new StringBuffer();
+    private String executeCommand(String[] command) {
+        StringBuffer output = new StringBuffer();
         try {
             Runtime rt = Runtime.getRuntime();
             Process pr = rt.exec(command);
@@ -447,10 +451,13 @@ public class AVSController implements RecordingStateListener, AlertHandler, Aler
                 System.out.println(line);
             }
             int exitVal = pr.waitFor();
-            System.out.println("Something went wrong." + exitVal);
+            if (exitVal != 0) {
+                System.out.println("Something went wrong." + exitVal);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
+        return output.toString();
     }
 
     public void startRecording(RecordingRMSListener rmsListener, RequestListener requestListener) {
