@@ -1,6 +1,11 @@
 #!/bin/bash
 
 #-------------------------------------------------------
+# Microsoft Speaker Recognition Service Subscription Key
+#-------------------------------------------------------
+SubscriptionKey=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+#-------------------------------------------------------
 # Paste from developer.amazon.com below
 #-------------------------------------------------------
 

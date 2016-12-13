@@ -356,80 +356,80 @@ public class AVSController implements RecordingStateListener, AlertHandler, Aler
             ** 2. verify speaker through Speaker Recognition API
             */
             // get speaker profile id
-            String[] cmd = new String[] {"python3", speakerRecognitionAPIPath, subscriptionKey, wavFilePath, "true"};
-            String speakerProfileId = executeCommand(cmd);
-            speakerProfileId = "placeholder";
+//            String[] cmd = new String[] {"python3", speakerRecognitionAPIPath, subscriptionKey, wavFilePath, "true"};
+//            String speakerProfileId = executeCommand(cmd);
+//            speakerProfileId = "placeholder";
 
-            if (!speakerProfileId.equals("")) {
+//            if (!speakerProfileId.equals("")) {
                 // generate name.txt
-                String speakerProfileIdFileName = tempFolderPath + "/name.txt";
-                cmd = new String[] {"echo", speakerProfileId};
-                ProcessBuilder builder = new ProcessBuilder(cmd);
-                builder.redirectOutput(new File(speakerProfileIdFileName));
-                Process p = builder.start();
+//            String speakerProfileIdFileName = tempFolderPath + "/name.txt";
+/*            String[] cmd = new String[] {"echo", speakerProfileId};
+            ProcessBuilder builder = new ProcessBuilder(cmd);
+            builder.redirectOutput(new File(speakerProfileIdFileName));
+            Process p = builder.start();
+*/
+            /*
+            ** 3. send verified speaker id to server
+            */
+/*            File speakerProfileIdFile = new File(speakerProfileIdFileName);
+            if (speakerProfileIdFile.exists()) {
+                cmd = new String[] {"scp", "-i", "/home/pi/.ssh/alexa-skill-server.pem", speakerProfileIdFileName, "ubuntu@52.15.157.172:~/flaskapp"};
+                executeCommand(cmd);
 
-                /*
-                ** 3. send verified speaker id to server
-                */
-                File speakerProfileIdFile = new File(speakerProfileIdFileName);
-                if (speakerProfileIdFile.exists()) {
-                    cmd = new String[] {"scp", "-i", "/home/pi/.ssh/alexa-skill-server.pem", speakerProfileIdFileName, "ubuntu@52.15.157.172:~/flaskapp"};
-                    executeCommand(cmd);
+                cmd = new String[] {"rm", speakerProfileIdFileName};
+                executeCommand(cmd);
+            }
+*/
+            /*
+            ** 4. modify voice input
+            */
 
-                    cmd = new String[] {"rm", speakerProfileIdFileName};
-                    executeCommand(cmd);
-                }
-
-                /*
-                ** 4. modify voice input
-                */
-
-                // prepend audio
-                ByteArrayOutputStream mergedOutputStream = new ByteArrayOutputStream();
-                mergedOutputStream.write(prependInput);
-                mergedOutputStream.write(audioInput);
-                byte[] mergedInput = mergedOutputStream.toByteArray();
+            // prepend audio
+            ByteArrayOutputStream mergedOutputStream = new ByteArrayOutputStream();
+            mergedOutputStream.write(prependInput);
+            mergedOutputStream.write(audioInput);
+            byte[] mergedInput = mergedOutputStream.toByteArray();
 
                 // convert to ais
-                inputStream = new ByteArrayInputStream(mergedInput);
-                long mergedNumFrames = (long) ((secondsToCapture - secondsToSkip + 1.5) * frameRate);
-                ais = new AudioInputStream(inputStream, format, mergedNumFrames);
+            inputStream = new ByteArrayInputStream(mergedInput);
+            long mergedNumFrames = (long) ((secondsToCapture - secondsToSkip + 1.5) * frameRate);
+            ais = new AudioInputStream(inputStream, format, mergedNumFrames);
 
                 // save as wav file
-                wavFile = new File(tempFolderPath + "/modified-voice-input.wav");
-                wavFile.delete();
-                wavFile.createNewFile();
-                AudioSystem.write(ais, fileType, wavFile);
-                inputStream.close();
-                ais.close();
+            wavFile = new File(tempFolderPath + "/modified-voice-input.wav");
+            wavFile.delete();
+            wavFile.createNewFile();
+            AudioSystem.write(ais, fileType, wavFile);
+            inputStream.close();
+            ais.close();
 
                 /*
                 ** 5. sendEvent using modified wav
                 */
-                inputStream = new ByteArrayInputStream(mergedInput);
-                avsClient.sendEvent(body, inputStream, requestListener, AUDIO_TYPE);
-                speechRequestAudioPlayerPauseController.startSpeechRequest();
+            inputStream = new ByteArrayInputStream(mergedInput);
+            avsClient.sendEvent(body, inputStream, requestListener, AUDIO_TYPE);
+//            speechRequestAudioPlayerPauseController.startSpeechRequest();
 
                 /*
                 ** 6. verify permission
                 */
-                String permission = "verified";
-                if (permission == "verified") {
-                    /*
-                    ** 7. sendEvent using original stream
-                    */
-                    inputStream = new ByteArrayInputStream(audioInput);
-                    avsClient.sendEvent(body, inputStream, requestListener, AUDIO_TYPE);
-                    speechRequestAudioPlayerPauseController.startSpeechRequest();
-                }
+/*                String permission = "verified";
+                if (permission == "verified") {*/
+                /*
+                ** 7. sendEvent using original stream
+                */
+            inputStream = new ByteArrayInputStream(audioInput);
+            avsClient.sendEvent(body, inputStream, requestListener, AUDIO_TYPE);
+            speechRequestAudioPlayerPauseController.startSpeechRequest();
+/*                }
                 else {
                     System.out.println("Not allowed!");
                 }
-            }
-            else {
-                System.out.println("Unrecognized speaker!");
-            }
-
+//            }
+//            else {
+//                System.out.println("Unrecognized speaker!");
+//            }
+*/
         } catch (IOException e) {
             log.error("Error occurred while writing to WAV file.");
         } catch (InterruptedException e1) {
